@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="it"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17151f"><title>FotoMagia</title>
+<style>
+:root{color-scheme:dark;--bg:#111018;--p:#201c2a;--p2:#2b2536;--txt:#f7f1fa;--muted:#bcb1c7;--gold:#e8bd75;--line:#40374d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#382744,#111018 58%);color:var(--txt);font:16px/1.45 system-ui,sans-serif}main{max-width:760px;margin:auto;padding:22px 15px 44px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:18px}.logo{width:50px;height:50px;border-radius:16px;background:linear-gradient(135deg,#f0c77e,#9563a7);display:grid;place-items:center;color:#211829;font-size:27px}h1{font-size:28px;margin:0}.tag{color:var(--gold);font-size:13px}.intro{color:var(--muted);font-size:14px;margin:0 0 17px}
+.card{background:rgba(32,28,42,.96);border:1px solid var(--line);border-radius:19px;padding:17px;margin:13px 0}h2{font-size:17px;margin:0 0 12px}.muted{color:var(--muted);font-size:13px}
+.upload{min-height:140px;border:1.5px dashed #796a89;border-radius:14px;display:grid;place-items:center;text-align:center;padding:13px;background:#17141f;cursor:pointer}.upload input{display:none}.upload img{max-width:100%;max-height:270px;border-radius:11px;display:none}
+textarea,input[type=url]{width:100%;background:#15121c;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit}textarea{min-height:100px;resize:vertical}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mode{background:#17141f;border:1px solid var(--line);border-radius:13px;color:var(--txt);padding:12px;text-align:left}.mode.active{border-color:var(--gold);background:#34283a}.mode b{display:block}.mode small{color:var(--muted)}
+button,.download{font:600 15px system-ui;border:0;border-radius:12px;padding:13px;cursor:pointer}.primary{background:linear-gradient(100deg,#edc47c,#d79b76);color:#211829;width:100%;margin-top:12px}.secondary{background:#373044;color:white;width:100%;border:1px solid #574a64}.primary:disabled{opacity:.45}
+.result{width:100%;max-height:360px;border-radius:12px;background:#08070b}.download{display:none;background:#e8bd75;color:#211829;text-decoration:none;text-align:center;margin-top:10px}
+.status{font-size:13px;color:var(--gold);min-height:18px;margin:9px 0 0}.note{background:#292332;border-left:3px solid var(--gold);border-radius:0 9px 9px 0;padding:9px 11px;color:var(--muted);font-size:12px}
+.settings summary{cursor:pointer;color:var(--muted);font-size:13px}.settings input{margin-top:9px}.settings p{font-size:12px;color:var(--muted)}
+footer{text-align:center;color:#92869c;font-size:12px;margin:20px 0}
+</style></head><body><main>
+<header><div class="logo">✦</div><div><h1>FotoMagia</h1><div class="tag">Dai vita alle tue fotografie</div></div></header>
+<p class="intro">Crea brevi video IA realistici o fantasy direttamente dal browser del telefono.</p>
+<section class="card">
+<h2>1 · Carica una fotografia</h2>
+<label class="upload"><input id="file" type="file" accept="image/jpeg,image/png,image/webp"><div id="pick"><div style="font-size:30px">＋</div><b>Tocca per scegliere una foto</b><div class="muted">JPG, PNG o WEBP · massimo 8 MB</div></div><img id="photo" alt="Foto selezionata"></label>
+</section>
+<section class="card"><h2>2 · Scegli lo stile</h2><div class="modes">
+<button class="mode active" data-mode="realistico"><b>📷 Realistico</b><small>Gesti, sguardi, vento, natura</small></button>
+<button class="mode" data-mode="fantasy"><b>✨ Fantasy</b><small>Magia, luci, atmosfere incantate</small></button>
+</div></section>
+<section class="card"><h2>3 · Descrivi cosa deve accadere</h2>
+<textarea id="prompt" placeholder="Es. Il druido solleva lentamente il bastone, il mantello si muove al vento e una luce verde comincia a brillare tra i rami del biancospino."></textarea>
+<div class="muted">Suggerimento: descrivi un movimento semplice e visibile, non soltanto ciò che è già presente nella foto.</div>
+<button class="primary" id="generate" disabled>✦ Genera il mio video</button>
+<p class="status" id="status">Per iniziare, seleziona una foto e scrivi una descrizione.</p>
+<video id="video" class="result" controls playsinline hidden></video>
+<a id="download" class="download" download="fotomagia.mp4">⬇ Scarica il video MP4</a>
+</section>
+<section class="card settings"><details><summary>Impostazioni tecniche (configurazione iniziale)</summary>
+<p>Per collegare il generatore gratuito occorre pubblicare il piccolo Worker incluso nel pacchetto e inserire qui il suo indirizzo HTTPS. Non inserire chiavi o password in questo campo.</p>
+<input id="workerUrl" type="url" placeholder="https://nome-worker.nome-account.workers.dev">
+<button class="secondary" id="saveWorker" style="margin-top:9px">Salva indirizzo</button><p id="configStatus"></p>
+</details></section>
+<div class="note">Il generatore usa Wan 2.2 su una GPU pubblica condivisa. È gratuito ma sperimentale: potrebbero esserci attese, limiti o interruzioni. Le foto vengono inviate al servizio di generazione per creare il video.</div>
+<footer>FotoMagia · prototipo gratuito · nessun abbonamento</footer>
+</main><script>
+const $=s=>document.querySelector(s);let file=null,mode='realistico',busy=false;
+const input=$('#file'),photo=$('#photo'),prompt=$('#prompt'),btn=$('#generate'),status=$('#status'),video=$('#video'),download=$('#download'),workerInput=$('#workerUrl');
+workerInput.value=localStorage.getItem('fotomagia_worker')||'';
+document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.mode').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;}));
+input.addEventListener('change',()=>{const f=input.files?.[0];if(!f)return;if(!f.type.startsWith('image/')){status.textContent='Scegli un file immagine JPG, PNG o WEBP.';return;}if(f.size>8*1024*1024){status.textContent='La foto supera 8 MB. Scegline una più piccola.';return;}file=f;photo.src=URL.createObjectURL(f);photo.style.display='block';$('#pick').style.display='none';update();});
+prompt.addEventListener('input',update);
+function update(){btn.disabled=!(file&&prompt.value.trim()&&!busy);}
+$('#saveWorker').addEventListener('click',()=>{const u=workerInput.value.trim().replace(/\/+$/,'');if(!/^https:\/\/[a-z0-9.-]+/.test(u)){ $('#configStatus').textContent='Inserisci un indirizzo HTTPS valido.';return;}localStorage.setItem('fotomagia_worker',u);workerInput.value=u;$('#configStatus').textContent='Indirizzo salvato su questo dispositivo.';});
+btn.addEventListener('click',async()=>{const base=(localStorage.getItem('fotomagia_worker')||'').replace(/\/+$/,'');if(!base){status.textContent='Prima configura l’indirizzo del Worker nelle impostazioni tecniche.';return;}busy=true;update();video.hidden=true;download.style.display='none';status.textContent='Invio della foto e avvio della generazione… La prima attesa può durare 1–2 minuti.';try{
+ const fd=new FormData();fd.append('image',file,file.name||'foto.jpg');
+ let motion=prompt.value.trim();if(mode==='fantasy')motion+=' Cinematic fantasy atmosphere, subtle magical light and particles, photorealistic details.';
+ else motion+=' Natural realistic movement, preserve the original person and scene, photorealistic.';
+ fd.append('params',JSON.stringify({prompt:motion,duration_seconds:3.5,steps:6}));
+ const res=await fetch(base+'/generate',{method:'POST',body:fd});if(!res.ok||!res.body){let m='Errore del servizio ('+res.status+').';try{const j=await res.json();m=j.error||m;}catch{}throw new Error(m);}
+ const url=await consumeSSE(res.body);video.src=url;video.hidden=false;download.href=url;download.style.display='block';status.textContent='Video pronto! Puoi riprodurlo e scaricare l’MP4.';
+ }catch(e){status.textContent='Non è stato possibile generare il video: '+e.message+' Riprova più tardi o controlla la configurazione.';}finally{busy=false;update();}});
+async function consumeSSE(stream){const reader=stream.getReader(),dec=new TextDecoder();let buf='';while(true){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});const events=buf.split(/\r?\n\r?\n/);buf=events.pop()||'';for(const raw of events){let name='message',data='';for(const line of raw.split(/\r?\n/)){if(line.startsWith('event:'))name=line.slice(6).trim();if(line.startsWith('data:'))data+=line.slice(5).trim();}if(name==='generating'){status.textContent='Il modello sta creando i fotogrammi…';}if(name==='complete'){const payload=JSON.parse(data),first=Array.isArray(payload)?payload[0]:null;const url=first?.url||first?.path;if(!url)throw new Error('Il servizio non ha restituito il video.');return url;}if(name==='error'){let msg=data;try{msg=JSON.parse(data)}catch{}throw new Error(String(msg||'Errore del modello'));}}}throw new Error('Connessione interrotta prima del completamento.');}
+</script></body></html>
